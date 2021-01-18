@@ -2978,7 +2978,17 @@ public class Attr extends JCTree.Visitor {
         result = check(tree, owntype, VAL, resultInfo);
     }
 
+
+    /**
+     * 对此二叉树进行检查
+     * 包含：
+     * 常量折叠
+     *
+     * @param tree
+     */
     public void visitBinary(JCBinary tree) {
+        // 此处用了分治思想（左、右、中合并）
+
         // Attribute arguments.
         Type left = chk.checkNonVoid(tree.lhs.pos(), attribExpr(tree.lhs, env));
         Type right = chk.checkNonVoid(tree.lhs.pos(), attribExpr(tree.rhs, env));
@@ -3001,6 +3011,7 @@ public class Attr extends JCTree.Visitor {
                                         right);
 
             // If both arguments are constants, fold them.
+            // 如果都是左右都是常量就折叠他们
             if (left.constValue() != null && right.constValue() != null) {
                 Type ctype = cfolder.fold2(opc, left, right);
                 if (ctype != null) {

@@ -917,7 +917,20 @@ public class JavaCompiler {
 
             case BY_TODO:
                 while (!todo.isEmpty())
-                    generate(desugar(flow(attribute(todo.remove()))));
+
+                    // 可从此处查看语义解析
+                    generate(desugar(
+                            // 数据流分析
+                            // new AliveAnalyzer().analyzeTree(env, make);
+                            // new AssignAnalyzer(log, syms, lint, names).analyzeTree(env);
+                            // new FlowAnalyzer().analyzeTree(env, make);
+                            // new CaptureAnalyzer().analyzeTree(env, make);
+                            flow(
+                                    // 代码检查
+                                    // 包含常量折叠、不全super等
+                                    attribute(todo.remove())
+                            )
+                    ));
                 break;
 
             default:
@@ -1247,6 +1260,10 @@ public class JavaCompiler {
     /**
      * Attribute a parse tree.
      * @returns the attributed parse tree
+     *
+     *
+     * 常量折叠见 Attr.visitBinary
+     * @see Attr
      */
     public Env<AttrContext> attribute(Env<AttrContext> env) {
         if (compileStates.isDone(env, CompileState.ATTR))
@@ -1267,7 +1284,13 @@ public class JavaCompiler {
                                   env.enclClass.sym.sourcefile :
                                   env.toplevel.sourcefile);
         try {
+
+            //************** 进行代码检查 **************
+
             attr.attrib(env);
+
+            //************** 进行代码检查 **************
+
             if (errorCount() > 0 && !shouldStop(CompileState.ATTR)) {
                 //if in fail-over mode, ensure that AST expression nodes
                 //are correctly initialized (e.g. they have a type/symbol)
