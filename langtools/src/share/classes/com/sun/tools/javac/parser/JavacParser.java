@@ -2258,6 +2258,8 @@ public class JavacParser implements Parser {
     }
 
     /** Block = "{" BlockStatements "}"
+     *
+     * 解析块体
      */
     JCBlock block(int pos, long flags) {
         accept(LBRACE);
@@ -2334,6 +2336,11 @@ public class JavacParser implements Parser {
         }
     }
 
+    /**
+     * 块体声明解析
+     *
+     * @return
+     */
     @SuppressWarnings("fallthrough")
     List<JCStatement> blockStatement() {
         //todo: skip to anchor on error(?)
@@ -3062,8 +3069,12 @@ public class JavacParser implements Parser {
     }
 
     /** CompilationUnit = [ { "@" Annotation } PACKAGE Qualident ";"] {ImportDeclaration} {TypeDeclaration}
+     *
+     * token 部分都有神马样的见
+     * @see Tokens.TokenKind
      */
     public JCTree.JCCompilationUnit parseCompilationUnit() {
+
         Token firstToken = token;
         JCExpression pid = null;
         JCModifiers mods = null;
@@ -3074,6 +3085,7 @@ public class JavacParser implements Parser {
         if (token.kind == MONKEYS_AT)
             mods = modifiersOpt();
 
+        //************* PACKAGE 部分 *************
         if (token.kind == PACKAGE) {
             seenPackage = true;
             if (mods != null) {
@@ -3082,9 +3094,13 @@ public class JavacParser implements Parser {
                 mods = null;
             }
             nextToken();
+            // qualident 解析 PACKAGE 语法树
             pid = qualident(false);
             accept(SEMI);
         }
+        //************* PACKAGE 部分 *************
+
+
         ListBuffer<JCTree> defs = new ListBuffer<JCTree>();
         boolean checkForImports = true;
         boolean firstTypeDecl = true;
@@ -3095,16 +3111,27 @@ public class JavacParser implements Parser {
                 if (token.kind == EOF)
                     break;
             }
+            //************* IMPORT 部分 *************
             if (checkForImports && mods == null && token.kind == IMPORT) {
                 seenImport = true;
-                defs.append(importDeclaration());
+                defs.append(
+                        // importDeclaration 解析 IMPORT 语法树
+                        importDeclaration()
+                );
+            //************* IMPORT 部分 *************
+
             } else {
+                //************* CLASS 部分 *************
                 Comment docComment = token.comment(CommentStyle.JAVADOC);
                 if (firstTypeDecl && !seenImport && !seenPackage) {
                     docComment = firstToken.comment(CommentStyle.JAVADOC);
                     consumedToplevelDoc = true;
                 }
+
+                // typeDeclaration 解析 CLASS 语法树
                 JCTree def = typeDeclaration(mods, docComment);
+
+
                 if (def instanceof JCExpressionStatement)
                     def = ((JCExpressionStatement)def).expr;
                 defs.append(def);
@@ -3112,9 +3139,13 @@ public class JavacParser implements Parser {
                     checkForImports = false;
                 mods = null;
                 firstTypeDecl = false;
+                //************* CLASS 部分 *************
             }
         }
+        //************* 三大语法树合并 部分 *************
         JCTree.JCCompilationUnit toplevel = F.at(firstToken.pos).TopLevel(packageAnnotations, pid, defs.toList());
+        //************* 三大语法树合并 部分 *************
+
         if (!consumedToplevelDoc)
             attach(toplevel, firstToken.comment(CommentStyle.JAVADOC));
         if (defs.isEmpty())
@@ -3164,22 +3195,29 @@ public class JavacParser implements Parser {
             nextToken();
             return toP(F.at(pos).Skip());
         } else {
+            // class 核心解析方法
             return classOrInterfaceOrEnumDeclaration(modifiersOpt(mods), docComment);
         }
     }
 
     /** ClassOrInterfaceOrEnumDeclaration = ModifiersOpt
      *           (ClassDeclaration | InterfaceDeclaration | EnumDeclaration)
+     *
+     *  class 核心解析方法
+     *
      *  @param mods     Any modifiers starting the class or interface declaration
      *  @param dc       The documentation comment for the class, or null.
      */
     JCStatement classOrInterfaceOrEnumDeclaration(JCModifiers mods, Comment dc) {
         if (token.kind == CLASS) {
+            // 解析 class 类
             return classDeclaration(mods, dc);
         } else if (token.kind == INTERFACE) {
+            // 解析 interface 接口
             return interfaceDeclaration(mods, dc);
         } else if (allowEnums) {
             if (token.kind == ENUM) {
+                // 解析 enum 枚举
                 return enumDeclaration(mods, dc);
             } else {
                 int pos = token.pos;
@@ -3197,6 +3235,7 @@ public class JavacParser implements Parser {
             if (token.kind == ENUM) {
                 error(token.pos, "enums.not.supported.in.source", source.name);
                 allowEnums = true;
+                // 解析 enum 枚举
                 return enumDeclaration(mods, dc);
             }
             int pos = token.pos;
@@ -3234,6 +3273,7 @@ public class JavacParser implements Parser {
             nextToken();
             implementing = typeList();
         }
+        // 解析类 body
         List<JCTree> defs = classOrInterfaceBody(name, false);
         JCClassDecl result = toP(F.at(pos).ClassDef(
             mods, name, typarams, extending, implementing, defs));
@@ -3374,8 +3414,12 @@ public class JavacParser implements Parser {
 
     /** ClassBody     = "{" {ClassBodyDeclaration} "}"
      *  InterfaceBody = "{" {InterfaceBodyDeclaration} "}"
+     *
+     *  解析 class/interface body 部分
+     *
      */
     List<JCTree> classOrInterfaceBody(Name className, boolean isInterface) {
+        // LBRACE 左大括号
         accept(LBRACE);
         if (token.pos <= endPosTable.errorEndPos) {
             // error recovery
@@ -3384,8 +3428,12 @@ public class JavacParser implements Parser {
                 nextToken();
         }
         ListBuffer<JCTree> defs = new ListBuffer<JCTree>();
+        // RBRACE 右大括号
         while (token.kind != RBRACE && token.kind != EOF) {
-            defs.appendList(classOrInterfaceBodyDeclaration(className, isInterface));
+            defs.appendList(
+                    // 逐个 token 进行解析
+                    classOrInterfaceBodyDeclaration(className, isInterface)
+            );
             if (token.pos <= endPosTable.errorEndPos) {
                // error recovery
                skip(false, true, true, false);
@@ -3460,6 +3508,8 @@ public class JavacParser implements Parser {
                 if (token.kind == LPAREN && !isInterface && type.hasTag(IDENT)) {
                     if (isInterface || tk.name() != className)
                         error(pos, "invalid.meth.decl.ret.type.req");
+
+                    // 解析方法
                     return List.of(methodDeclaratorRest(
                         pos, mods, null, names.init, typarams,
                         isInterface, true, dc));
@@ -3467,6 +3517,8 @@ public class JavacParser implements Parser {
                     pos = token.pos;
                     Name name = ident();
                     if (token.kind == LPAREN) {
+
+                        // 解析方法
                         return List.of(methodDeclaratorRest(
                             pos, mods, type, name, typarams,
                             isInterface, isVoid, dc));
@@ -3525,6 +3577,7 @@ public class JavacParser implements Parser {
             JCBlock body = null;
             JCExpression defaultValue;
             if (token.kind == LBRACE) {
+                // 解析方法体
                 body = block();
                 defaultValue = null;
             } else {
@@ -3539,11 +3592,13 @@ public class JavacParser implements Parser {
                     // error recovery
                     skip(false, true, false, false);
                     if (token.kind == LBRACE) {
+                        // 解析方法体
                         body = block();
                     }
                 }
             }
 
+            // 制作方法树
             JCMethodDecl result =
                     toP(F.at(pos).MethodDef(mods, name, type, typarams,
                                             receiverParam, params, thrown,

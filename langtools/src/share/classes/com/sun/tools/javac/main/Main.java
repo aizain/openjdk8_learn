@@ -531,9 +531,15 @@ public class Main {
                 for (JavaFileObject fo : otherFiles)
                     fileObjects = fileObjects.prepend(fo);
             }
+
+            //******************** 编译 java 文件 ******************
+
             comp.compile(fileObjects,
                          classnames.toList(),
                          processors);
+
+            //******************** 编译 java 文件 ******************
+
 
             if (log.expectDiagKeys != null) {
                 if (log.expectDiagKeys.isEmpty()) {

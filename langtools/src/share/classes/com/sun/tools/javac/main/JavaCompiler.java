@@ -627,7 +627,10 @@ public class JavaCompiler {
                 keepComments = true;
                 genEndPos = true;
             }
+
+            // 创建解析器 JavacParser(Lexer)
             Parser parser = parserFactory.newParser(content, keepComments(), genEndPos, lineDebugInfo);
+            // 使用解析器解析为编译单元
             tree = parser.parseCompilationUnit();
             if (verbose) {
                 log.printVerbose("parsing.done", Long.toString(elapsed(msec)));
@@ -857,6 +860,8 @@ public class JavaCompiler {
         try {
             initProcessAnnotations(processors);
 
+            //******************** 编译 java 文件 ******************
+
             // These method calls must be chained to avoid memory leaks
             delegateCompiler =
                 processAnnotations(
@@ -864,6 +869,8 @@ public class JavaCompiler {
                             // 开始解析 java 文件
                             CompileState.PARSE, parseFiles(sourceFileObjects))),
                     classnames);
+
+            //******************** 编译 java 文件 ******************
 
             delegateCompiler.compile2();
             delegateCompiler.close();
@@ -955,7 +962,10 @@ public class JavaCompiler {
         for (JavaFileObject fileObject : fileObjects) {
             if (!filesSoFar.contains(fileObject)) {
                 filesSoFar.add(fileObject);
-                trees.append(parse(fileObject));
+                trees.append(
+                        // 每一个文件编译成一颗语法树
+                        parse(fileObject)
+                );
             }
         }
         return trees.toList();
