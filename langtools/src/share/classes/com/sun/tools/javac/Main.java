@@ -25,7 +25,10 @@
 
 package com.sun.tools.javac;
 
+import java.io.File;
 import java.io.PrintWriter;
+import java.net.URL;
+import java.util.Properties;
 
 /**
  * The programmatic interface for the Java Programming Language
@@ -36,10 +39,15 @@ public class Main {
 
     /** Main entry point for the launcher.
      *  Note: This method calls System.exit.
+     *
+     *  调试入口
+     *
      *  @param args command line arguments
      */
     public static void main(String[] args) throws Exception {
-        System.exit(compile(args));
+        String rootPath = System.getProperty("user.dir");
+        String javaFile = rootPath + "/" + "langtools/src/share/classes/" + Test.class.getName().replaceAll("\\.", "/")  + ".java";
+        System.exit(compile(new String[] { javaFile }));
     }
 
     /** Programmatic interface to the Java Programming Language

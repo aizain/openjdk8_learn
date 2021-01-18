@@ -860,7 +860,7 @@ public class JavaCompiler {
         try {
             initProcessAnnotations(processors);
 
-            //******************** 编译 java 文件 ******************
+            //******************** 编译 java 文件（语法、词法解析） ******************
 
             // These method calls must be chained to avoid memory leaks
             delegateCompiler =
@@ -870,9 +870,13 @@ public class JavaCompiler {
                             CompileState.PARSE, parseFiles(sourceFileObjects))),
                     classnames);
 
-            //******************** 编译 java 文件 ******************
+            //******************** 编译 java 文件（语法、词法解析） ******************
 
+
+            //******************** 编译 java 文件（语义解析） ******************
             delegateCompiler.compile2();
+            //******************** 编译 java 文件（语义解析） ******************
+
             delegateCompiler.close();
             elapsed_msec = delegateCompiler.elapsed_msec;
         } catch (Abort ex) {
